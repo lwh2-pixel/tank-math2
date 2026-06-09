@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TANK MATH｜四隊同步坦克數學戰</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+      background: #1b130b;
+      color: white;
+      overflow-x: hidden;
+    }
+
+    .screen {
+      display: none;
+      min-height: 100vh;
+      padding: 24px;
+      position: relative;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .war-bg {
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255,255,255,0.4) 0 60px, transparent 130px),
+        radial-gradient(circle at 78% 15%, rgba(255,255,255,0.34) 0 55px, transparent 120px),
+        linear-gradient(180deg, #7eddf5 0%, #aeefff 26%, #e9bf82 27%, #cc8b50 55%, #7d3b1d 80%, #2b140b 100%);
+      overflow: hidden;
+    }
+
+    .war-bg::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 12% 50%, #d29b65 0 7%, transparent 8%),
+        radial-gradient(ellipse at 28% 45%, #b97745 0 10%, transparent 11%),
+        radial-gradient(ellipse at 48% 49%, #d7a06d 0 8%, transparent 9%),
+        radial-gradient(ellipse at 72% 45%, #a9683e 0 12%, transparent 13%),
+        radial-gradient(ellipse at 90% 48%, #cf915d 0 9%, transparent 10%);
+      opacity: 0.28;
+      pointer-events: none;
+    }
+
+    .war-bg::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 30%;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(255, 211, 117, 0.12) 0,
+          rgba(255, 211, 117, 0.12) 4px,
+          rgba(73, 35, 18, 0.25) 8px,
+          rgba(73, 35, 18, 0.25) 15px
+        ),
+        linear-gradient(180deg, rgba(156,81,37,0.2), rgba(57,27,14,0.72));
+      pointer-events: none;
+    }
+
+    .title {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      font-size: clamp(36px, 7vw, 82px);
+      margin: 12px 0 8px;
+      font-weight: 1000;
+      letter-spacing: 4px;
+      color: #fff8e9;
+      text-shadow:
+        5px 5px 0 #321305,
+        0 0 18px #ffb238,
+        0 0 36px #ff5a16;
+    }
+
+    .subtitle {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      font-size: clamp(18px, 3vw, 30px);
+      color: #fff0c1;
+      margin-bottom: 26px;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 2;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px;
+      border-radius: 28px;
+      border: 5px solid #e08a35;
+      background: rgba(35, 19, 9, 0.9);
+      box-shadow:
+        0 0 0 8px rgba(0,0,0,0.25),
+        0 25px 55px rgba(0,0,0,0.45),
+        inset 0 0 45px rgba(255,124,24,0.16);
+    }
+
+    .step-title {
+      text-align: center;
+      font-size: clamp(28px, 4vw, 46px);
+      color: #ffe08a;
+      margin: 6px 0 22px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+      margin: 24px 0;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    .choice-btn,
+    .big-btn,
+    .small-btn,
+    .key-btn,
+    .inline-target-btn {
+      border: none;
+      border-radius: 20px;
+      padding: 20px;
+      font-size: clamp(21px, 3vw, 34px);
+      font-weight: 1000;
+      color: #fff;
+      cursor: pointer;
+      background: linear-gradient(#fb9a3e, #9f3109);
+      box-shadow: 0 8px 0 #4c1302, 0 14px 24px rgba(0,0,0,0.45);
+      transition: 0.08s;
+    }
+
+    .choice-btn:hover,
+    .big-btn:hover,
+    .small-btn:hover,
+    .key-btn:hover,
+    .inline-target-btn:hover {
+      filter: brightness(1.15);
+      transform: translateY(-2px);
+    }
+
+    .choice-btn:active,
+    .big-btn:active,
+    .small-btn:active,
+    .key-btn:active,
+    .inline-target-btn:active {
+      transform: translateY(5px);
+      box-shadow: 0 3px 0 #4c1302;
+    }
+
+    .choice-btn.selected {
+      background: linear-gradient(#35e977, #0b7731);
+      box-shadow: 0 8px 0 #06451b, 0 0 26px #65ff9a;
+    }
+
+    .nav-row {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .big-btn {
+      min-width: 230px;
+      color: #331000;
+      background: linear-gradient(#ffe268, #d25b13);
+    }
+
+    .small-btn {
+      font-size: clamp(17px, 2.4vw, 26px);
+      padding: 14px 20px;
+      background: linear-gradient(#5d8fff, #163caa);
+      box-shadow: 0 6px 0 #0a1e61;
+    }
+
+    .danger {
+      background: linear-gradient(#ff655b, #b5140e) !important;
+      box-shadow: 0 6px 0 #670905 !important;
+    }
+
+    .green {
+      background: linear-gradient(#4ee579, #0e7b36) !important;
+      box-shadow: 0 6px 0 #063f1a !important;
+    }
+
+    .teacher-tip {
+      margin-top: 20px;
+      padding: 16px 20px;
+      border-left: 8px solid #ffd86d;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.12);
+      font-size: clamp(17px, 2.4vw, 24px);
+      line-height: 1.5;
+      color: #fff0c4;
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .game-title {
+      font-size: clamp(26px, 4vw, 50px);
+      font-weight: 1000;
+      color: #fff5df;
+      text-shadow:
+        4px 4px 0 #321305,
+        0 0 18px #ff8a1c;
+      letter-spacing: 2px;
+    }
+
+    .mode-badge {
+      display: inline-block;
+      margin-left: 10px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      border: 3px solid #ffe070;
+      font-size: clamp(16px, 2.2vw, 24px);
+      color: #ffe070;
+      vertical-align: middle;
+    }
+
+    .battlefield {
+      position: relative;
+      z-index: 2;
+      height: 390px;
+      border: 6px solid #8b3f17;
+      border-radius: 28px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(255,255,255,0.95) 0 38px, rgba(255,255,255,0.38) 39px 120px, transparent 121px),
+        radial-gradient(circle at 75% 12%, rgba(255,255,255,0.9) 0 42px, rgba(255,255,255,0.25) 43px 115px, transparent 116px),
+        linear-gradient(180deg, #87def5 0%, #b8efff 32%, #e7bd82 33%, #cf9259 54%, #8f4821 55%, #3c190a 100%);
+      box-shadow:
+        inset 0 -60px 50px rgba(0,0,0,0.36),
+        0 14px 30px rgba(0,0,0,0.45);
+      perspective: 900px;
+    }
+
+    .battlefield::before {
+      content: "";
+      position: absolute;
+      left: -8%;
+      right: -8%;
+      top: 122px;
+      height: 150px;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse at 8% 100%, transparent 0 44px, #bd7a48 45px 92px, transparent 93px),
+        radial-gradient(ellipse at 22% 100%, transparent 0 62px, #a8643f 63px 128px, transparent 129px),
+        radial-gradient(ellipse at 39% 100%, transparent 0 50px, #d39a63 51px 112px, transparent 113px),
+        radial-gradient(ellipse at 57% 100%, transparent 0 66px, #b87348 67px 136px, transparent 137px),
+        radial-gradient(ellipse at 76% 100%, transparent 0 54px, #d0935d 55px 124px, transparent 125px),
+        radial-gradient(ellipse at 93% 100%, transparent 0 70px, #a86642 71px 146px, transparent 147px);
+      opacity: 0.95;
+    }
+
+    .battlefield::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 246px;
+      height: 56px;
+      z-index: 2;
+      background:
+        linear-gradient(180deg, #f0b35e 0 12px, #b96527 13px 100%);
+      border-top: 7px solid #ffe08a;
+      border-bottom: 7px solid #6f2d12;
+    }
+
+    .perspective-ground {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: -46px;
+      height: 190px;
+      z-index: 3;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,0.18), transparent 18%, transparent 82%, rgba(0,0,0,0.18)),
+        repeating-linear-gradient(
+          90deg,
+          rgba(255,255,255,0.08) 0,
+          rgba(255,255,255,0.08) 4px,
+          transparent 5px,
+          transparent 60px
+        ),
+        linear-gradient(180deg, #c8732c 0%, #7a3417 100%);
+      clip-path: polygon(24% 0, 76% 0, 100% 100%, 0 100%);
+      transform: rotateX(56deg);
+      transform-origin: top center;
+      border-top: 8px solid #ffd06a;
+      box-shadow:
+        inset 0 16px 22px rgba(255,255,255,0.12),
+        inset 0 -35px 45px rgba(0,0,0,0.35);
+    }
+
+    .road-line {
+      position: absolute;
+      bottom: 36px;
+      height: 120px;
+      width: 5px;
+      z-index: 4;
+      background: linear-gradient(180deg, rgba(255,223,122,0.1), rgba(255,223,122,0.8));
+      transform-origin: bottom center;
+      opacity: 0.85;
+    }
+
+    .road-line.r1 {
+      left: 32%;
+      transform: rotate(13deg);
+    }
+
+    .road-line.r2 {
+      left: 50%;
+      transform: rotate(0deg);
+    }
+
+    .road-line.r3 {
+      right: 32%;
+      transform: rotate(-13deg);
+    }
+
+    .cloud {
+      position: absolute;
+      background: rgba(255,255,255,0.82);
+      border-radius: 999px;
+      z-index: 4;
+      filter: drop-shadow(0 3px 0 rgba(0,0,0,0.08));
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: rgba(255,255,255,0.86);
+      border-radius: 50%;
+    }
+
+    .cloud.c1 {
+      width: 130px;
+      height: 34px;
+      left: 8%;
+      top: 44px;
+    }
+
+    .cloud.c1::before {
+      width: 58px;
+      height: 58px;
+      left: 22px;
+      top: -30px;
+    }
+
+    .cloud.c1::after {
+      width: 44px;
+      height: 44px;
+      left: 70px;
+      top: -20px;
+    }
+
+    .cloud.c2 {
+      width: 90px;
+      height: 26px;
+      right: 14%;
+      top: 62px;
+      opacity: 0.7;
+    }
+
+    .cloud.c2::before {
+      width: 42px;
+      height: 42px;
+      left: 18px;
+      top: -22px;
+    }
+
+    .cloud.c2::after {
+      width: 30px;
+      height: 30px;
+      left: 52px;
+      top: -14px;
+    }
+
+    .missile {
+      position: absolute;
+      width: 78px;
+      height: 16px;
+      border-radius: 50% 10px 10px 50%;
+      background: linear-gradient(90deg, #ececec, #9a9a9a 55%, #e33 56%);
+      z-index: 5;
+      transform: rotate(-23deg);
+      filter: drop-shadow(0 0 4px white);
+      animation: missileFly 7s linear infinite;
+    }
+
+    .missile.m1 {
+      top: 70px;
+      left: -90px;
+    }
+
+    .missile.m2 {
+      top: 115px;
+      left: -160px;
+      animation-delay: 1.2s;
+    }
+
+    .missile.m3 {
+      top: 44px;
+      left: -250px;
+      animation-delay: 2.6s;
+    }
+
+    @keyframes missileFly {
+      0% {
+        transform: translateX(0) translateY(80px) rotate(-23deg);
+      }
+      100% {
+        transform: translateX(130vw) translateY(-110px) rotate(-23deg);
+      }
+    }
+
+    .timer-box {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      min-width: 240px;
+      padding: 10px 26px;
+      border-radius: 22px;
+      border: 5px solid #ffe070;
+      background: rgba(0,0,0,0.78);
+      text-align: center;
+      font-size: clamp(30px, 5vw, 60px);
+      font-weight: 1000;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .timer-box.realtime {
+      border-color: #38ff7a;
+      color: #baffcf;
+    }
+
+    .timer-box.warning {
+      color: #ff2f22;
+      border-color: #ff2f22;
+      animation: timerBlink 0.35s infinite alternate;
+    }
+
+    @keyframes timerBlink {
+      from {
+        transform: translateX(-50%) scale(1);
+        box-shadow: 0 0 8px #ff2f22;
+      }
+      to {
+        transform: translateX(-50%) scale(1.08);
+        box-shadow: 0 0 28px #ff2f22;
+      }
+    }
+
+    .tank {
+      position: absolute;
+      width: 150px;
+      height: 78px;
+      z-index: 12;
+      filter: drop-shadow(0 9px 5px rgba(0,0,0,0.45));
+      transition: opacity 0.3s, filter 0.3s;
+    }
+
+    .tank-body {
+      position: absolute;
+      left: 14px;
+      bottom: 20px;
+      width: 118px;
+      height: 42px;
+      background: var(--tank-color);
+      border: 4px solid #1a1a1a;
+      border-radius: 38px 38px 18px 18px;
+      box-shadow:
+        inset 0 -8px 0 rgba(0,0,0,0.25),
+        inset 0 5px 0 rgba(255,255,255,0.24);
+    }
+
+    .tank-turret {
+      position: absolute;
+      left: 48px;
+      bottom: 54px;
+      width: 58px;
+      height: 36px;
+      background: var(--tank-color);
+      border: 4px solid #1a1a1a;
+      border-radius: 24px 24px 8px 8px;
+      box-shadow:
+        inset 0 -6px 0 rgba(0,0,0,0.22),
+        inset 0 4px 0 rgba(255,255,255,0.22);
+    }
+
+    .tank-cannon {
+      position: absolute;
+      left: 94px;
+      bottom: 68px;
+      width: 72px;
+      height: 14px;
+      background: #202020;
+      border-radius: 8px;
+      border: 3px solid #050505;
+      transform-origin: left center;
+    }
+
+    .tank-track {
+      position: absolute;
+      left: 4px;
+      bottom: 0;
+      width: 142px;
+      height: 30px;
+      background: #202020;
+      border: 4px solid #050505;
+      border-radius: 999px;
+    }
+
+    .tank-track::before {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 15% 50%, #777 0 6px, #111 7px 11px, transparent 12px),
+        radial-gradient(circle at 35% 50%, #777 0 6px, #111 7px 11px, transparent 12px),
+        radial-gradient(circle at 55% 50%, #777 0 6px, #111 7px 11px, transparent 12px),
+        radial-gradient(circle at 75% 50%, #777 0 6px, #111 7px 11px, transparent 12px),
+        #2e2e2e;
+    }
+
+    /*
+      上方戰場坦克位置設定
+      從左到右固定：
+      0 藍隊、1 紅隊、2 綠隊、3 紫隊
+
+      只改顯示排列，不改遊戲功能。
+    */
+
+    .tank.team0 {
+      left: 6%;
+      bottom: 62px;
+      transform: scale(1.08);
+      --tank-color: #3b82f6;
+      z-index: 16;
+    }
+
+    .tank.team1 {
+      left: 30%;
+      bottom: 62px;
+      transform: scale(1.08);
+      --tank-color: #ef4444;
+      z-index: 16;
+    }
+
+    .tank.team2 {
+      left: 54%;
+      bottom: 62px;
+      transform: scale(1.08);
+      --tank-color: #22c55e;
+      z-index: 16;
+    }
+
+    .tank.team3 {
+      left: 78%;
+      bottom: 62px;
+      transform: scale(1.08);
+      --tank-color: #a855f7;
+      z-index: 16;
+    }
+
+    .tank.out {
+      opacity: 0.25;
+      filter: grayscale(1);
+    }
+
+    .tank.out::after {
+      content: "☠";
+      position: absolute;
+      left: 46px;
+      top: -60px;
+      font-size: 52px;
+      transform: scaleX(1);
+      color: #fff;
+      text-shadow: 3px 3px 0 #000;
+    }
+
+    .hp-label {
+      position: absolute;
+      width: 170px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 1000;
+      color: #fff2bb;
+      text-shadow: 2px 2px 0 #000;
+      z-index: 20;
+    }
+
+    .hp-label.team0 {
+      left: 5%;
+      bottom: 22px;
+    }
+
+    .hp-label.team1 {
+      left: 29%;
+      bottom: 22px;
+    }
+
+    .hp-label.team2 {
+      left: 53%;
+      bottom: 22px;
+    }
+
+    .hp-label.team3 {
+      left: 77%;
+      bottom: 22px;
+    }
+
+    .laser {
+      position: absolute;
+      height: 12px;
+      border-radius: 999px;
+      transform-origin: left center;
+      z-index: 25;
+      pointer-events: none;
+      background: linear-gradient(90deg, #fff, #fff36d, #ff2d2d, #fff);
+      box-shadow:
+        0 0 10px #fff,
+        0 0 22px #ff3838,
+        0 0 36px #ffb000;
+      animation: laserPulse 0.22s infinite alternate;
+    }
+
+    .laser::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 3px;
+      height: 4px;
+      border-radius: 999px;
+      background: white;
+      box-shadow: 0 0 16px white;
+    }
+
+    @keyframes laserPulse {
+      from {
+        opacity: 0.75;
+        filter: brightness(1);
+      }
+      to {
+        opacity: 1;
+        filter: brightness(1.8);
+      }
+    }
+
+    .boom {
+      position: absolute;
+      z-index: 28;
+      font-size: 82px;
+      opacity: 0;
+      transform: scale(0.3);
+      pointer-events: none;
+    }
+
+    .boom.show {
+      opacity: 1;
+      transform: scale(1.6);
+      transition: 0.22s;
+    }
+
+    .team-panels {
+      position: relative;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 1100px) {
+      .team-panels {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 650px) {
+      .team-panels {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .team-panel {
+      border-radius: 24px;
+      border: 5px solid rgba(255,255,255,0.25);
+      background:
+        linear-gradient(rgba(255,255,255,0.08), rgba(0,0,0,0.15)),
+        rgba(40, 21, 9, 0.92);
+      padding: 14px;
+      box-shadow: inset 0 0 28px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.35);
+    }
+
+    .team-panel.out {
+      opacity: 0.38;
+      filter: grayscale(1);
+    }
+
+    .team-panel.attacking {
+      outline: 6px solid #fff36d;
+      box-shadow: 0 0 35px #fff36d, inset 0 0 28px rgba(0,0,0,0.5);
+    }
+
+    .team-panel.correct {
+      animation: correctFlash 0.7s;
+    }
+
+    .team-panel.wrong {
+      animation: wrongFlash 0.7s;
+    }
+
+    .team-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .team-name {
+      font-size: clamp(22px, 3vw, 34px);
+      font-weight: 1000;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .hp-mini {
+      font-size: 20px;
+      font-weight: 900;
+      color: #ffe3a5;
+    }
+
+    .panel-tank-wrap {
+      height: 92px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: -4px 0 8px;
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(135,222,245,0.2), rgba(168,91,39,0.35)),
+        rgba(0,0,0,0.16);
+      border: 3px solid rgba(255,255,255,0.12);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel-tank-wrap::before {
+      content: "";
+      position: absolute;
+      left: 15%;
+      right: 15%;
+      bottom: -18px;
+      height: 48px;
+      background: linear-gradient(180deg, #c8732c, #7a3417);
+      clip-path: polygon(25% 0, 75% 0, 100% 100%, 0 100%);
+      opacity: 0.9;
+    }
+
+    /*
+      下方計算方格坦克
+      計算方格本身由 state.teams 依序產生：
+      0 藍隊、1 紅隊、2 綠隊、3 紫隊
+
+      只拿掉前後排與左右翻轉造成的視覺混淆。
+      不改答題、攻擊、扣血、計時等任何功能。
+    */
+
+    .mini-tank {
+      position: relative;
+      width: 118px;
+      height: 58px;
+      filter: drop-shadow(0 6px 3px rgba(0,0,0,0.55));
+      z-index: 2;
+    }
+
+    .mini-tank.front {
+      transform: scale(1.08);
+    }
+
+    .mini-tank.back {
+      transform: scale(1.08);
+      opacity: 1;
+    }
+
+    .mini-tank.face-left.front {
+      transform: scale(1.08);
+    }
+
+    .mini-tank.face-left.back {
+      transform: scale(1.08);
+    }
+
+    .mini-body {
+      position: absolute;
+      left: 12px;
+      bottom: 16px;
+      width: 92px;
+      height: 32px;
+      background: var(--mini-tank-color);
+      border: 3px solid #111;
+      border-radius: 28px 28px 12px 12px;
+      box-shadow:
+        inset 0 -7px 0 rgba(0,0,0,0.25),
+        inset 0 4px 0 rgba(255,255,255,0.22);
+    }
+
+    .mini-turret {
+      position: absolute;
+      left: 40px;
+      bottom: 42px;
+      width: 44px;
+      height: 26px;
+      background: var(--mini-tank-color);
+      border: 3px solid #111;
+      border-radius: 20px 20px 7px 7px;
+      box-shadow:
+        inset 0 -5px 0 rgba(0,0,0,0.22),
+        inset 0 3px 0 rgba(255,255,255,0.2);
+    }
+
+    .mini-cannon {
+      position: absolute;
+      left: 78px;
+      bottom: 52px;
+      width: 52px;
+      height: 10px;
+      background: #1b1b1b;
+      border: 2px solid #050505;
+      border-radius: 999px;
+    }
+
+    .mini-track {
+      position: absolute;
+      left: 4px;
+      bottom: 0;
+      width: 108px;
+      height: 24px;
+      background: #202020;
+      border: 3px solid #050505;
+      border-radius: 999px;
+    }
+
+    .mini-track::before {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 16% 50%, #777 0 4px, #111 5px 8px, transparent 9px),
+        radial-gradient(circle at 38% 50%, #777 0 4px, #111 5px 8px, transparent 9px),
+        radial-gradient(circle at 60% 50%, #777 0 4px, #111 5px 8px, transparent 9px),
+        radial-gradient(circle at 82% 50%, #777 0 4px, #111 5px 8px, transparent 9px),
+        #2f2f2f;
+    }
+
+    .hp-bar {
+      height: 20px;
+      background: #260801;
+      border: 3px solid #000;
+      border-radius: 30px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .hp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #27ff6a, #ffd13b, #ff341f);
+      transition: width 0.35s;
+    }
+
+    .question {
+      text-align: center;
+      font-size: clamp(24px, 3.2vw, 42px);
+      line-height: 1.05;
+      min-height: 46px;
+      font-weight: 1000;
+      color: #fff7df;
+      text-shadow: 3px 3px 0 #000;
+      margin: 6px 0 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .answer-display {
+      height: 58px;
+      border: 4px solid #e5953d;
+      border-radius: 16px;
+      background: #fff7e7;
+      color: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(28px, 4vw, 46px);
+      font-weight: 1000;
+      margin-bottom: 10px;
+      box-shadow: inset 0 3px 10px rgba(0,0,0,0.25);
+    }
+
+    .placeholder {
+      color: #9c9c9c;
+      font-size: clamp(18px, 2.4vw, 26px);
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .key-btn {
+      padding: 10px 4px;
+      border-radius: 14px;
+      font-size: clamp(22px, 3vw, 36px);
+      background: linear-gradient(#50c7ff, #125aa5);
+      box-shadow: 0 5px 0 #092f5b;
+    }
+
+    .key-btn.control {
+      font-size: clamp(15px, 2vw, 23px);
+      background: linear-gradient(#ffc15b, #ac4c0d);
+      box-shadow: 0 5px 0 #5c2503;
+    }
+
+    .key-btn.submit {
+      grid-column: span 3;
+      font-size: clamp(20px, 2.7vw, 34px);
+      background: linear-gradient(#55e87f, #0b8034);
+      box-shadow: 0 5px 0 #06451b;
+    }
+
+    .key-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: grayscale(0.8);
+    }
+
+    .answer-status {
+      min-height: 30px;
+      margin-top: 8px;
+      text-align: center;
+      font-size: clamp(17px, 2.2vw, 25px);
+      font-weight: 900;
+      color: #ffe6a8;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .inline-target-area {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 3px solid #fff36d;
+    }
+
+    .inline-target-title {
+      text-align: center;
+      font-size: clamp(20px, 2.7vw, 30px);
+      font-weight: 1000;
+      color: #fff36d;
+      text-shadow: 2px 2px 0 #000;
+      margin-bottom: 10px;
+    }
+
+    .inline-target-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .inline-target-btn {
+      padding: 12px;
+      border-radius: 14px;
+      font-size: clamp(17px, 2.2vw, 26px);
+      background: linear-gradient(#ff6c59, #ab130b);
+      box-shadow: 0 5px 0 #5c0804;
+    }
+
+    .global-status {
+      position: relative;
+      z-index: 4;
+      margin-top: 12px;
+      text-align: center;
+      font-size: clamp(22px, 3vw, 36px);
+      font-weight: 1000;
+      color: #fff3a0;
+      text-shadow: 3px 3px 0 #000;
+      min-height: 44px;
+    }
+
+    .winner {
+      text-align: center;
+      padding-top: 8vh;
+    }
+
+    .winner h1 {
+      font-size: clamp(46px, 8vw, 96px);
+      color: #fff6df;
+      text-shadow: 6px 6px 0 #321305, 0 0 28px #ff8819;
+    }
+
+    .winner p {
+      font-size: clamp(24px, 4vw, 44px);
+      color: #ffe4a1;
+    }
+
+    .shake {
+      animation: shake 0.35s;
+    }
+
+    @keyframes shake {
+      0% { transform: translate(0,0); }
+      20% { transform: translate(-9px,5px); }
+      40% { transform: translate(9px,-5px); }
+      60% { transform: translate(-7px,-2px); }
+      80% { transform: translate(7px,4px); }
+      100% { transform: translate(0,0); }
+    }
+
+    @keyframes correctFlash {
+      0% { background-color: rgba(40,21,9,0.92); }
+      50% { background-color: rgba(29, 255, 102, 0.45); }
+      100% { background-color: rgba(40,21,9,0.92); }
+    }
+
+    @keyframes wrongFlash {
+      0% { background-color: rgba(40,21,9,0.92); }
+      50% { background-color: rgba(255, 48, 27, 0.5); }
+      100% { background-color: rgba(40,21,9,0.92); }
+    }
+  </style>
+</head>
+
+<body>
+  <section id="setupScreen" class="screen active war-bg">
+    <h1 class="title">TANK MATH</h1>
+    <div class="subtitle">四隊同步作答｜立體坦克戰｜答對即時發射激光</div>
+
+    <div class="panel">
+      <div id="setupStep"></div>
+
+      <div class="nav-row">
+        <button id="backBtn" class="small-btn">上一步</button>
+        <button id="nextBtn" class="big-btn">下一步</button>
+      </div>
+
+      <div class="teacher-tip">
+        <b>計時模式：</b>四隊一起作答，時間到統一結算。<br>
+        <b>即時模式：</b>答對隊伍可在自己的面板選攻擊目標，其他隊不會暫停。<br>
+        <b>攻擊傷害：</b>可自訂每次激光攻擊扣多少生命值。
+      </div>
+    </div>
+  </section>
+
+  <section id="gameScreen" class="screen war-bg">
+    <div class="topbar">
+      <div class="game-title">
+        TANK MATH
+        <span id="modeBadge" class="mode-badge">計時模式</span>
+        <span id="damageBadge" class="mode-badge">傷害 25</span>
+      </div>
+      <div>
+        <button id="musicBtn" class="small-btn">音樂：開</button>
+        <button id="pauseTimerBtn" class="small-btn green">暫停計時</button>
+        <button id="submitAllBtn" class="small-btn green">全隊交卷</button>
+        <button id="restartBtn" class="small-btn danger">重新開始</button>
+      </div>
+    </div>
+
+    <div id="battlefield" class="battlefield">
+      <div class="perspective-ground"></div>
+      <div class="road-line r1"></div>
+      <div class="road-line r2"></div>
+      <div class="road-line r3"></div>
+
+      <div class="cloud c1"></div>
+      <div class="cloud c2"></div>
+
+      <div class="missile m1"></div>
+      <div class="missile m2"></div>
+      <div class="missile m3"></div>
+
+      <div id="timerBox" class="timer-box">時間：20</div>
+
+      <div class="tank team0" id="tank0">
+        <div class="tank-track"></div>
+        <div class="tank-body"></div>
+        <div class="tank-turret"></div>
+        <div class="tank-cannon"></div>
+      </div>
+
+      <div class="tank team1" id="tank1">
+        <div class="tank-track"></div>
+        <div class="tank-body"></div>
+        <div class="tank-turret"></div>
+        <div class="tank-cannon"></div>
+      </div>
+
+      <div class="tank team2" id="tank2">
+        <div class="tank-track"></div>
+        <div class="tank-body"></div>
+        <div class="tank-turret"></div>
+        <div class="tank-cannon"></div>
+      </div>
+
+      <div class="tank team3" id="tank3">
+        <div class="tank-track"></div>
+        <div class="tank-body"></div>
+        <div class="tank-turret"></div>
+        <div class="tank-cannon"></div>
+      </div>
+
+      <div class="hp-label team0" id="hpLabel0">藍隊 HP 100</div>
+      <div class="hp-label team1" id="hpLabel1">紅隊 HP 100</div>
+      <div class="hp-label team2" id="hpLabel2">綠隊 HP 100</div>
+      <div class="hp-label team3" id="hpLabel3">紫隊 HP 100</div>
+    </div>
+
+    <div id="teamPanels" class="team-panels"></div>
+
+    <div id="globalStatus" class="global-status">請四隊一起作答！</div>
+  </section>
+
+  <section id="winnerScreen" class="screen war-bg winner">
+    <h1 id="winnerTitle">藍隊獲勝！</h1>
+    <p id="winnerStats"></p>
+    <button class="big-btn" onclick="location.reload()">再玩一次</button>
+  </section>
+
+  <script>
+    const state = {
+      step: 0,
+      operations: ["+"],
+      difficulty: "easy",
+      gameMode: "timer",
+      secondsPerRound: 20,
+      attackDamage: 25,
+      timeLeft: 20,
+      timerInterval: null,
+      timerPaused: false,
+      roundActive: false,
+      attackInProgress: false,
+      teams: [],
+      pendingAttackers: [],
+      currentAttacker: null,
+      roundNumber: 0,
+      totalQuestions: 0,
+      correctCount: 0,
+      musicOn: true,
+      audioCtx: null,
+      musicTimer: null
+    };
+
+    const setupScreen = document.getElementById("setupScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const winnerScreen = document.getElementById("winnerScreen");
+    const setupStep = document.getElementById("setupStep");
+    const backBtn = document.getElementById("backBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    const battlefield = document.getElementById("battlefield");
+    const timerBox = document.getElementById("timerBox");
+    const teamPanels = document.getElementById("teamPanels");
+    const globalStatus = document.getElementById("globalStatus");
+    const musicBtn = document.getElementById("musicBtn");
+    const pauseTimerBtn = document.getElementById("pauseTimerBtn");
+    const submitAllBtn = document.getElementById("submitAllBtn");
+    const modeBadge = document.getElementById("modeBadge");
+    const damageBadge = document.getElementById("damageBadge");
+
+    const teamNames = ["藍隊", "紅隊", "綠隊", "紫隊"];
+    const teamColors = ["#3b82f6", "#ef4444", "#22c55e", "#a855f7"];
+
+    function renderSetup() {
+      backBtn.style.display = state.step === 0 ? "none" : "inline-block";
+
+      if (state.step === 0) {
+        setupStep.innerHTML = `
+          <h2 class="step-title">第一步：選擇計算類型</h2>
+          <div class="choice-grid">
+            ${operationButton("+", "加法 +")}
+            ${operationButton("-", "減法 −")}
+            ${operationButton("*", "乘法 ×")}
+            ${operationButton("/", "除法 ÷")}
+          </div>
+          <div class="subtitle" style="font-size:22px;margin:0;">可選一種或多種混合出題</div>
+        `;
+
+        document.querySelectorAll("[data-operation]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const op = btn.dataset.operation;
+
+            if (state.operations.includes(op)) {
+              if (state.operations.length > 1) {
+                state.operations = state.operations.filter(x => x !== op);
+              }
+            } else {
+              state.operations.push(op);
+            }
+
+            renderSetup();
+          });
+        });
+      }
+
+      if (state.step === 1) {
+        setupStep.innerHTML = `
+          <h2 class="step-title">第二步：選擇難度</h2>
+          <div class="choice-grid">
+            ${difficultyButton("easy", "低難度", "適合低年級")}
+            ${difficultyButton("medium", "中難度", "適合中年級")}
+            ${difficultyButton("hard", "高難度", "挑戰高手")}
+          </div>
+        `;
+
+        document.querySelectorAll("[data-difficulty]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.difficulty = btn.dataset.difficulty;
+            renderSetup();
+          });
+        });
+      }
+
+      if (state.step === 2) {
+        setupStep.innerHTML = `
+          <h2 class="step-title">第三步：選擇遊戲模式</h2>
+          <div class="choice-grid">
+            <button class="choice-btn ${state.gameMode === "timer" ? "selected" : ""}" data-mode="timer">
+              計時模式<br>
+              <span style="font-size:20px;">時間到統一結算</span>
+            </button>
+            <button class="choice-btn ${state.gameMode === "realtime" ? "selected" : ""}" data-mode="realtime">
+              即時模式<br>
+              <span style="font-size:20px;">答對即時選擇攻擊</span>
+            </button>
+          </div>
+        `;
+
+        document.querySelectorAll("[data-mode]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.gameMode = btn.dataset.mode;
+            renderSetup();
+          });
+        });
+      }
+
+      if (state.step === 3) {
+        const title = state.gameMode === "timer"
+          ? "第四步：設定每回合限時"
+          : "第四步：設定即時模式挑戰時間";
+
+        const note = state.gameMode === "timer"
+          ? "四隊同時作答，時間到自動結算"
+          : "答對隊伍在自己的面板選攻擊目標，其他隊可繼續作答";
+
+        setupStep.innerHTML = `
+          <h2 class="step-title">${title}</h2>
+          <div class="choice-grid">
+            ${timeButton(20)}
+            ${timeButton(30)}
+            ${timeButton(45)}
+            ${timeButton(60)}
+            ${timeButton(90)}
+            ${timeButton(120)}
+          </div>
+          <div class="subtitle" style="font-size:22px;margin:0;">${note}</div>
+        `;
+
+        document.querySelectorAll("[data-seconds]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.secondsPerRound = Number(btn.dataset.seconds);
+            renderSetup();
+          });
+        });
+      }
+
+      if (state.step === 4) {
+        setupStep.innerHTML = `
+          <h2 class="step-title">第五步：設定每次攻擊傷害</h2>
+          <div class="choice-grid">
+            ${damageButton(10)}
+            ${damageButton(15)}
+            ${damageButton(20)}
+            ${damageButton(25)}
+            ${damageButton(30)}
+            ${damageButton(50)}
+          </div>
+          <div class="subtitle" style="font-size:22px;margin:0;">
+            數值越高，遊戲節奏越快。建議：25 HP。
+          </div>
+        `;
+
+        document.querySelectorAll("[data-damage]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.attackDamage = Number(btn.dataset.damage);
+            renderSetup();
+          });
+        });
+      }
+
+      nextBtn.textContent = state.step === 4 ? "開始遊戲" : "下一步";
+    }
+
+    function operationButton(op, label) {
+      return `
+        <button class="choice-btn ${state.operations.includes(op) ? "selected" : ""}" data-operation="${op}">
+          ${label}
+        </button>
+      `;
+    }
+
+    function difficultyButton(value, title, desc) {
+      return `
+        <button class="choice-btn ${state.difficulty === value ? "selected" : ""}" data-difficulty="${value}">
+          ${title}<br>
+          <span style="font-size:20px;">${desc}</span>
+        </button>
+      `;
+    }
+
+    function timeButton(seconds) {
+      return `
+        <button class="choice-btn ${state.secondsPerRound === seconds ? "selected" : ""}" data-seconds="${seconds}">
+          ${seconds} 秒
+        </button>
+      `;
+    }
+
+    function damageButton(damage) {
+      return `
+        <button class="choice-btn ${state.attackDamage === damage ? "selected" : ""}" data-damage="${damage}">
+          扣 ${damage} HP
+        </button>
+      `;
+    }
+
+    backBtn.addEventListener("click", () => {
+      if (state.step > 0) {
+        state.step--;
+        renderSetup();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (state.step < 4) {
+        state.step++;
+        renderSetup();
+      } else {
+        startGame();
+      }
+    });
+
+    function startGame() {
+      setupScreen.classList.remove("active");
+      gameScreen.classList.add("active");
+
+      state.teams = teamNames.map((name, index) => ({
+        name,
+        color: teamColors[index],
+        hp: 100,
+        score: 0,
+        out: false,
+        question: null,
+        input: "",
+        submitted: false,
+        correctThisRound: false,
+        attacking: false,
+        firing: false
+      }));
+
+      modeBadge.textContent = state.gameMode === "timer" ? "計時模式" : "即時模式";
+      damageBadge.textContent = `傷害 ${state.attackDamage}`;
+
+      if (state.gameMode === "realtime") {
+        submitAllBtn.style.display = "none";
+        pauseTimerBtn.textContent = "暫停計時";
+        timerBox.classList.add("realtime");
+      } else {
+        submitAllBtn.style.display = "inline-block";
+        timerBox.classList.remove("realtime");
+      }
+
+      renderBattleHP();
+      startMusic();
+
+      if (state.gameMode === "timer") {
+        startTimerModeRound();
+      } else {
+        startRealtimeMode();
+      }
+    }
+
+    function startTimerModeRound() {
+      clearRoundTimer();
+
+      const activeTeams = state.teams.filter(team => !team.out);
+
+      if (activeTeams.length <= 1) {
+        endGame();
+        return;
+      }
+
+      state.roundNumber++;
+      state.roundActive = true;
+      state.attackInProgress = false;
+      state.pendingAttackers = [];
+      state.currentAttacker = null;
+
+      state.teams.forEach(team => {
+        if (team.out) return;
+
+        team.question = generateMathQuestion();
+        team.input = "";
+        team.submitted = false;
+        team.correctThisRound = false;
+        team.attacking = false;
+        team.firing = false;
+      });
+
+      renderTeamPanels();
+      renderBattleHP();
+
+      globalStatus.textContent = `第 ${state.roundNumber} 回合：四隊一起作答！`;
+
+      startRoundTimer();
+    }
+
+    function startRealtimeMode() {
+      clearRoundTimer();
+
+      state.roundNumber = 1;
+      state.roundActive = true;
+      state.attackInProgress = false;
+      state.pendingAttackers = [];
+      state.currentAttacker = null;
+
+      state.teams.forEach(team => {
+        team.question = generateMathQuestion();
+        team.input = "";
+        team.submitted = false;
+        team.correctThisRound = false;
+        team.attacking = false;
+        team.firing = false;
+      });
+
+      renderTeamPanels();
+      renderBattleHP();
+
+      globalStatus.textContent = "即時模式開始！答對隊伍自己選目標，其他隊繼續作答！";
+
+      startRoundTimer();
+    }
+
+    function generateMathQuestion() {
+      const op = state.operations[randomInt(0, state.operations.length - 1)];
+      const range = getRange();
+
+      let a = 1;
+      let b = 1;
+      let answer = 2;
+      let displayOp = "+";
+
+      if (op === "+") {
+        a = randomInt(range.min, range.max);
+        b = randomInt(range.min, range.max);
+        answer = a + b;
+        displayOp = "+";
+      }
+
+      if (op === "-") {
+        a = randomInt(range.min, range.max);
+        b = randomInt(range.min, range.max);
+
+        if (b > a) {
+          const temp = a;
+          a = b;
+          b = temp;
+        }
+
+        answer = a - b;
+        displayOp = "−";
+      }
+
+      if (op === "*") {
+        const max = state.difficulty === "easy" ? 9 : state.difficulty === "medium" ? 12 : 20;
+        a = randomInt(2, max);
+        b = randomInt(2, max);
+        answer = a * b;
+        displayOp = "×";
+      }
+
+      if (op === "/") {
+        const max = state.difficulty === "easy" ? 9 : state.difficulty === "medium" ? 12 : 20;
+        b = randomInt(2, max);
+        answer = randomInt(2, max);
+        a = b * answer;
+        displayOp = "÷";
+      }
+
+      return {
+        a,
+        b,
+        answer,
+        displayOp
+      };
+    }
+
+    function getRange() {
+      if (state.difficulty === "easy") return { min: 1, max: 10 };
+      if (state.difficulty === "medium") return { min: 2, max: 30 };
+      return { min: 5, max: 99 };
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function renderTeamPanels() {
+      teamPanels.innerHTML = "";
+
+      state.teams.forEach((team, teamIndex) => {
+        const panel = document.createElement("div");
+        panel.className = "team-panel";
+
+        if (team.out) {
+          panel.classList.add("out");
+        }
+
+        if (team.attacking || team.firing) {
+          panel.classList.add("attacking");
+        }
+
+        panel.style.borderColor = team.color;
+
+        let questionText = "準備中";
+
+        if (team.out) {
+          questionText = "已出局";
+        } else if (team.firing) {
+          questionText = "激光攻擊中";
+        } else if (team.attacking) {
+          questionText = "選擇目標";
+        } else if (team.question) {
+          questionText = `${team.question.a} ${team.question.displayOp} ${team.question.b} = ?`;
+        }
+
+        const answerText = team.input === ""
+          ? `<span class="placeholder">${team.submitted ? "已答對" : "輸入答案"}</span>`
+          : team.input;
+
+        panel.innerHTML = `
+          <div class="team-head">
+            <div class="team-name" style="color:${team.color}">${team.name}</div>
+            <div class="hp-mini">HP ${team.hp}｜答對 ${team.score}</div>
+          </div>
+
+          <div class="panel-tank-wrap">
+            ${miniTankHTML(teamIndex)}
+          </div>
+
+          <div class="hp-bar">
+            <div class="hp-fill" style="width:${team.hp}%"></div>
+          </div>
+
+          <div class="question">${questionText}</div>
+
+          <div class="answer-display">${answerText}</div>
+
+          ${
+            team.attacking
+              ? inlineTargetArea(teamIndex)
+              : keypadArea(teamIndex)
+          }
+
+          <div class="answer-status" id="status-${teamIndex}">
+            ${statusLabel(team)}
+          </div>
+        `;
+
+        teamPanels.appendChild(panel);
+      });
+    }
+
+    function miniTankHTML(teamIndex) {
+      const team = state.teams[teamIndex];
+
+      /*
+        下方計算方格固定由 state.teams 依序產生：
+        0 藍隊、1 紅隊、2 綠隊、3 紫隊
+
+        只改視覺方向與大小，避免紅隊 / 紫隊因翻轉造成辨識混淆。
+        不影響任何遊戲功能。
+      */
+
+      return `
+        <div class="mini-tank front face-right" style="--mini-tank-color:${team.color};">
+          <div class="mini-track"></div>
+          <div class="mini-body"></div>
+          <div class="mini-turret"></div>
+          <div class="mini-cannon"></div>
+        </div>
+      `;
+    }
+
+    function keypadArea(teamIndex) {
+      const team = state.teams[teamIndex];
+
+      return `
+        <div class="keypad">
+          ${keyButton(teamIndex, "1")}
+          ${keyButton(teamIndex, "2")}
+          ${keyButton(teamIndex, "3")}
+          ${keyButton(teamIndex, "4")}
+          ${keyButton(teamIndex, "5")}
+          ${keyButton(teamIndex, "6")}
+          ${keyButton(teamIndex, "7")}
+          ${keyButton(teamIndex, "8")}
+          ${keyButton(teamIndex, "9")}
+          ${controlButton(teamIndex, "clear", "清除")}
+          ${keyButton(teamIndex, "0")}
+          ${controlButton(teamIndex, "back", "退格")}
+          ${controlButton(teamIndex, "submit", submitLabel(team), "submit")}
+        </div>
+      `;
+    }
+
+    function inlineTargetArea(attackerIndex) {
+      const attacker = state.teams[attackerIndex];
+
+      let buttons = "";
+
+      state.teams.forEach((team, index) => {
+        if (index !== attackerIndex && !team.out) {
+          buttons += `
+            <button
+              class="inline-target-btn"
+              data-attacker="${attackerIndex}"
+              data-target="${index}"
+              style="border:4px solid ${team.color};"
+            >
+              激光攻擊 ${team.name}
+            </button>
+          `;
+        }
+      });
+
+      if (buttons === "") {
+        buttons = `<div class="answer-status">沒有可攻擊目標</div>`;
+      }
+
+      return `
+        <div class="inline-target-area">
+          <div class="inline-target-title">${attacker.name} 選擇激光攻擊目標</div>
+          <div class="inline-target-grid">
+            ${buttons}
+          </div>
+        </div>
+      `;
+    }
+
+    function submitLabel(team) {
+      if (team.out) return "出局";
+      if (team.attacking) return "選目標";
+      if (team.firing) return "攻擊中";
+      if (state.gameMode === "timer" && team.submitted) return "已交卷";
+      return "交卷";
+    }
+
+    function statusLabel(team) {
+      if (team.out) return "已出局";
+      if (team.firing) return "正在發射激光，稍後換新題";
+      if (team.attacking) return "答對！請選擇激光攻擊目標";
+      if (state.gameMode === "timer" && team.submitted) return "等待結算";
+      if (state.gameMode === "realtime") return "即時作答中";
+      return "請作答";
+    }
+
+    function teamCanInput(team) {
+      if (!state.roundActive) return false;
+      if (team.out) return false;
+      if (team.attacking) return false;
+      if (team.firing) return false;
+      if (state.gameMode === "timer" && team.submitted) return false;
+      return true;
+    }
+
+    function keyButton(teamIndex, key) {
+      const team = state.teams[teamIndex];
+      const disabled = teamCanInput(team) ? "" : "disabled";
+
+      return `
+        <button class="key-btn" data-team="${teamIndex}" data-key="${key}" ${disabled}>
+          ${key}
+        </button>
+      `;
+    }
+
+    function controlButton(teamIndex, action, label, extraClass = "control") {
+      const team = state.teams[teamIndex];
+      const disabled = teamCanInput(team) ? "" : "disabled";
+
+      return `
+        <button class="key-btn ${extraClass}" data-team="${teamIndex}" data-action="${action}" ${disabled}>
+          ${label}
+        </button>
+      `;
+    }
+
+    teamPanels.addEventListener("click", event => {
+      const inlineTargetBtn = event.target.closest(".inline-target-btn");
+
+      if (inlineTargetBtn) {
+        const attackerIndex = Number(inlineTargetBtn.dataset.attacker);
+        const targetIndex = Number(inlineTargetBtn.dataset.target);
+
+        chooseInlineTarget(attackerIndex, targetIndex);
+        return;
+      }
+
+      const btn = event.target.closest("button");
+
+      if (!btn || btn.disabled || !state.roundActive) return;
+
+      const teamIndex = Number(btn.dataset.team);
+      const team = state.teams[teamIndex];
+
+      if (!team || !teamCanInput(team)) return;
+
+      if (btn.dataset.key !== undefined) {
+        const key = btn.dataset.key;
+
+        if (team.input.length < 6) {
+          if (team.input === "0" && key !== "0") {
+            team.input = key;
+          } else if (!(team.input === "0" && key === "0")) {
+            team.input += key;
+          }
+
+          playSound("tap");
+        }
+      }
+
+      if (btn.dataset.action === "clear") {
+        team.input = "";
+        playSound("tap");
+      }
+
+      if (btn.dataset.action === "back") {
+        team.input = team.input.slice(0, -1);
+        playSound("tap");
+      }
+
+      if (btn.dataset.action === "submit") {
+        if (team.input === "") {
+          globalStatus.textContent = `${team.name} 還沒有輸入答案！`;
+          playSound("wrong");
+        } else {
+          if (state.gameMode === "timer") {
+            submitAnswerTimerMode(teamIndex);
+          } else {
+            submitAnswerRealtimeMode(teamIndex);
+          }
+        }
+      }
+
+      renderTeamPanels();
+
+      if (state.gameMode === "timer" && allActiveTeamsSubmitted()) {
+        finishTimerModeRound();
+      }
+    });
+
+    function submitAnswerTimerMode(teamIndex) {
+      const team = state.teams[teamIndex];
+      team.submitted = true;
+      globalStatus.textContent = `${team.name} 已交卷！`;
+      playSound("tap");
+    }
+
+    function submitAnswerRealtimeMode(teamIndex) {
+      const team = state.teams[teamIndex];
+
+      if (!team.question) return;
+
+      state.totalQuestions++;
+
+      const value = Number(team.input);
+      const correct = value === team.question.answer;
+
+      if (correct) {
+        team.score++;
+        state.correctCount++;
+        team.attacking = true;
+        team.submitted = true;
+        team.correctThisRound = true;
+
+        globalStatus.textContent = `${team.name} 答對！請在自己的面板選擇激光攻擊目標！`;
+        playSound("correct");
+
+        const panel = teamPanels.children[teamIndex];
+        if (panel) {
+          panel.classList.add("correct");
+        }
+      } else {
+        team.correctThisRound = false;
+        team.input = "";
+        globalStatus.textContent = `${team.name} 答錯了，請再試一次！`;
+        playSound("wrong");
+
+        const panel = teamPanels.children[teamIndex];
+        if (panel) {
+          panel.classList.add("wrong");
+          setTimeout(() => panel.classList.remove("wrong"), 500);
+        }
+      }
+    }
+
+    function chooseInlineTarget(attackerIndex, targetIndex) {
+      const attacker = state.teams[attackerIndex];
+      const target = state.teams[targetIndex];
+
+      if (!attacker || !target) return;
+      if (attacker.out || target.out) return;
+      if (!attacker.attacking) return;
+
+      attacker.attacking = false;
+      attacker.firing = true;
+
+      globalStatus.textContent = `${attacker.name} 對 ${target.name} 發射激光！其他隊繼續作答！`;
+      renderTeamPanels();
+
+      fireLaserNonBlocking(attackerIndex, targetIndex);
+    }
+
+    function allActiveTeamsSubmitted() {
+      return state.teams
+        .filter(team => !team.out)
+        .every(team => team.submitted);
+    }
+
+    submitAllBtn.addEventListener("click", () => {
+      if (!state.roundActive) return;
+      if (state.gameMode !== "timer") return;
+      finishTimerModeRound();
+    });
+
+    function finishTimerModeRound() {
+      if (!state.roundActive || state.gameMode !== "timer") return;
+
+      state.roundActive = false;
+      clearRoundTimer();
+
+      state.pendingAttackers = [];
+
+      state.teams.forEach((team, index) => {
+        if (team.out || !team.question) return;
+
+        state.totalQuestions++;
+
+        const value = Number(team.input);
+        const correct = team.input !== "" && value === team.question.answer;
+
+        team.correctThisRound = correct;
+
+        if (correct) {
+          team.score++;
+          state.correctCount++;
+          state.pendingAttackers.push(index);
+        }
+      });
+
+      renderTeamPanels();
+
+      state.teams.forEach((team, index) => {
+        const panel = teamPanels.children[index];
+        const status = document.getElementById(`status-${index}`);
+
+        if (!panel || !status || team.out) return;
+
+        if (team.correctThisRound) {
+          panel.classList.add("correct");
+          status.textContent = "答對！可以激光攻擊！";
+        } else {
+          panel.classList.add("wrong");
+          status.textContent = team.question
+            ? `答錯 / 未答，答案：${team.question.answer}`
+            : "沒有題目";
+        }
+      });
+
+      if (state.pendingAttackers.length === 0) {
+        playSound("wrong");
+        globalStatus.textContent = "本回合沒有隊伍答對，準備下一回合！";
+        setTimeout(startTimerModeRound, 1800);
+      } else {
+        playSound("correct");
+        globalStatus.textContent = `本回合 ${state.pendingAttackers.length} 隊答對，準備激光攻擊！`;
+        setTimeout(processNextTimerModeAttack, 900);
+      }
+    }
+
+    function startRoundTimer() {
+      state.timeLeft = state.secondsPerRound;
+      state.timerPaused = false;
+      pauseTimerBtn.textContent = "暫停計時";
+
+      updateTimerDisplay();
+
+      state.timerInterval = setInterval(() => {
+        if (state.timerPaused || !state.roundActive) return;
+
+        state.timeLeft--;
+        updateTimerDisplay();
+
+        if (state.timeLeft <= 5 && state.timeLeft > 0) {
+          playSound("tick");
+        }
+
+        if (state.timeLeft <= 0) {
+          if (state.gameMode === "timer") {
+            globalStatus.textContent = "時間到！開始結算。";
+            finishTimerModeRound();
+          } else {
+            globalStatus.textContent = "挑戰時間到！";
+            endGameByScore();
+          }
+        }
+      }, 1000);
+    }
+
+    function clearRoundTimer() {
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
+
+      timerBox.classList.remove("warning");
+    }
+
+    function updateTimerDisplay() {
+      if (state.gameMode === "timer") {
+        timerBox.textContent = `時間：${state.timeLeft}`;
+      } else {
+        timerBox.textContent = `即時戰：${state.timeLeft}`;
+      }
+
+      if (state.timeLeft <= 5) {
+        timerBox.classList.add("warning");
+      } else {
+        timerBox.classList.remove("warning");
+      }
+    }
+
+    pauseTimerBtn.addEventListener("click", () => {
+      state.timerPaused = !state.timerPaused;
+      pauseTimerBtn.textContent = state.timerPaused ? "繼續計時" : "暫停計時";
+      globalStatus.textContent = state.timerPaused ? "計時已暫停。" : "計時繼續！";
+    });
+
+    function processNextTimerModeAttack() {
+      const activeTeams = state.teams.filter(team => !team.out);
+
+      if (activeTeams.length <= 1) {
+        endGame();
+        return;
+      }
+
+      while (state.pendingAttackers.length > 0) {
+        const attacker = state.pendingAttackers.shift();
+
+        if (!state.teams[attacker].out) {
+          const hasTarget = state.teams.some((team, index) => {
+            return index !== attacker && !team.out;
+          });
+
+          if (hasTarget) {
+            state.currentAttacker = attacker;
+            showTimerModeTargetInline(attacker);
+            return;
+          }
+        }
+      }
+
+      setTimeout(startTimerModeRound, 900);
+    }
+
+    function showTimerModeTargetInline(attackerIndex) {
+      state.teams.forEach(team => {
+        team.attacking = false;
+        team.firing = false;
+      });
+
+      state.teams[attackerIndex].attacking = true;
+      globalStatus.textContent = `${state.teams[attackerIndex].name} 請在自己的面板選擇激光攻擊目標！`;
+      renderTeamPanels();
+    }
+
+    function fireLaserNonBlocking(from, to) {
+      const fromEl = document.getElementById("tank" + from);
+      const toEl = document.getElementById("tank" + to);
+
+      if (!fromEl || !toEl) {
+        afterAttack(from);
+        return;
+      }
+
+      const fieldRect = battlefield.getBoundingClientRect();
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect = toEl.getBoundingClientRect();
+
+      const start = getLaserStartPoint(from, fromRect, fieldRect);
+      const end = {
+        x: toRect.left - fieldRect.left + toRect.width / 2,
+        y: toRect.top - fieldRect.top + toRect.height / 2
+      };
+
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      const laser = document.createElement("div");
+      laser.className = "laser";
+      laser.style.left = start.x + "px";
+      laser.style.top = start.y + "px";
+      laser.style.width = length + "px";
+      laser.style.transform = `rotate(${angle}deg)`;
+      battlefield.appendChild(laser);
+
+      const boom = document.createElement("div");
+      boom.className = "boom";
+      boom.textContent = "💥";
+      boom.style.left = (end.x - 42) + "px";
+      boom.style.top = (end.y - 58) + "px";
+      battlefield.appendChild(boom);
+
+      playSound("laser");
+
+      setTimeout(() => {
+        boom.classList.add("show");
+        battlefield.classList.add("shake");
+        playSound("boom");
+        applyDamage(from, to);
+      }, 260);
+
+      setTimeout(() => {
+        laser.remove();
+      }, 520);
+
+      setTimeout(() => {
+        boom.remove();
+        battlefield.classList.remove("shake");
+        afterAttack(from);
+      }, 1000);
+    }
+
+    function getLaserStartPoint(teamIndex, fromRect, fieldRect) {
+      const isLeftSide = teamIndex === 0 || teamIndex === 2;
+
+      const x = isLeftSide
+        ? fromRect.left - fieldRect.left + fromRect.width * 0.92
+        : fromRect.left - fieldRect.left + fromRect.width * 0.08;
+
+      const y = fromRect.top - fieldRect.top + fromRect.height * 0.38;
+
+      return { x, y };
+    }
+
+    function applyDamage(from, to) {
+      if (!state.teams[from] || !state.teams[to]) return;
+      if (state.teams[from].out || state.teams[to].out) return;
+
+      state.teams[to].hp -= state.attackDamage;
+
+      if (state.teams[to].hp <= 0) {
+        state.teams[to].hp = 0;
+        state.teams[to].out = true;
+        globalStatus.textContent = `${state.teams[from].name} 擊毀 ${state.teams[to].name}！`;
+      } else {
+        globalStatus.textContent = `${state.teams[from].name} 命中 ${state.teams[to].name}，扣 ${state.attackDamage} HP！`;
+      }
+
+      renderBattleHP();
+      renderTeamPanels();
+
+      const activeTeams = state.teams.filter(team => !team.out);
+
+      if (activeTeams.length <= 1) {
+        setTimeout(endGame, 700);
+      }
+    }
+
+    function afterAttack(attackerIndex) {
+      if (state.gameMode === "timer") {
+        if (state.teams[attackerIndex]) {
+          state.teams[attackerIndex].attacking = false;
+          state.teams[attackerIndex].firing = false;
+        }
+
+        processNextTimerModeAttack();
+        return;
+      }
+
+      if (state.gameMode === "realtime") {
+        const attacker = state.teams[attackerIndex];
+
+        if (attacker && !attacker.out) {
+          attacker.question = generateMathQuestion();
+          attacker.input = "";
+          attacker.submitted = false;
+          attacker.correctThisRound = false;
+          attacker.attacking = false;
+          attacker.firing = false;
+        }
+
+        renderTeamPanels();
+        renderBattleHP();
+
+        const activeTeams = state.teams.filter(team => !team.out);
+        if (activeTeams.length > 1) {
+          globalStatus.textContent = "繼續即時作答！答對即可再發射激光！";
+        }
+      }
+    }
+
+    function renderBattleHP() {
+      state.teams.forEach((team, index) => {
+        const tank = document.getElementById("tank" + index);
+        const label = document.getElementById("hpLabel" + index);
+
+        if (!tank || !label) return;
+
+        tank.classList.toggle("out", team.out);
+        label.textContent = `${team.name} HP ${team.hp}`;
+        label.style.color = team.color;
+        label.style.opacity = team.out ? "0.35" : "1";
+      });
+    }
+
+    function endGame() {
+      clearRoundTimer();
+      stopMusic();
+
+      const winner =
+        state.teams.find(team => !team.out) ||
+        getWinnerByScoreAndHp();
+
+      gameScreen.classList.remove("active");
+      winnerScreen.classList.add("active");
+
+      document.getElementById("winnerTitle").textContent = `${winner.name} 獲勝！`;
+      document.getElementById("winnerStats").textContent =
+        `回答 ${state.totalQuestions} 題，答對 ${state.correctCount} 題。${scoreSummary()}`;
+
+      playSound("win");
+    }
+
+    function endGameByScore() {
+      clearRoundTimer();
+      stopMusic();
+      state.roundActive = false;
+
+      const winner = getWinnerByScoreAndHp();
+
+      gameScreen.classList.remove("active");
+      winnerScreen.classList.add("active");
+
+      document.getElementById("winnerTitle").textContent = `${winner.name} 獲勝！`;
+      document.getElementById("winnerStats").textContent =
+        `即時挑戰結束！回答 ${state.totalQuestions} 題，答對 ${state.correctCount} 題。${scoreSummary()}`;
+
+      playSound("win");
+    }
+
+    function getWinnerByScoreAndHp() {
+      const sorted = [...state.teams].sort((a, b) => {
+        if (b.hp !== a.hp) return b.hp - a.hp;
+        return b.score - a.score;
+      });
+
+      return sorted[0];
+    }
+
+    function scoreSummary() {
+      return state.teams
+        .map(team => `${team.name}：HP ${team.hp}，答對 ${team.score}`)
+        .join("｜");
+    }
+
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      location.reload();
+    });
+
+    musicBtn.addEventListener("click", () => {
+      state.musicOn = !state.musicOn;
+      musicBtn.textContent = state.musicOn ? "音樂：開" : "音樂：關";
+
+      if (state.musicOn) {
+        startMusic();
+      } else {
+        stopMusic();
+      }
+    });
+
+    function startMusic() {
+      if (!state.musicOn) return;
+      if (!window.AudioContext && !window.webkitAudioContext) return;
+
+      state.audioCtx = state.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+
+      if (state.musicTimer) {
+        clearInterval(state.musicTimer);
+      }
+
+      const notes = [110, 147, 165, 196, 220, 196, 165, 147];
+      let i = 0;
+
+      state.musicTimer = setInterval(() => {
+        if (!state.musicOn) return;
+
+        playTone(notes[i % notes.length], 0.07, "sawtooth", 0.035);
+
+        if (i % 3 === 0) {
+          playTone(72, 0.12, "square", 0.025);
+        }
+
+        i++;
+      }, 150);
+    }
+
+    function stopMusic() {
+      if (state.musicTimer) {
+        clearInterval(state.musicTimer);
+      }
+
+      state.musicTimer = null;
+    }
+
+    function playTone(freq, duration, type, volume) {
+      if (!state.audioCtx) return;
+
+      const ctx = state.audioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type || "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = volume || 0.05;
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.stop(ctx.currentTime + duration);
+    }
+
+    function playSound(type) {
+      if (!window.AudioContext && !window.webkitAudioContext) return;
+
+      state.audioCtx = state.audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+
+      if (type === "correct") {
+        playTone(523, 0.09, "sine", 0.08);
+        setTimeout(() => playTone(659, 0.09, "sine", 0.08), 90);
+        setTimeout(() => playTone(784, 0.12, "sine", 0.08), 180);
+      }
+
+      if (type === "wrong") {
+        playTone(160, 0.18, "sawtooth", 0.08);
+        setTimeout(() => playTone(120, 0.22, "sawtooth", 0.07), 140);
+      }
+
+      if (type === "boom") {
+        playTone(80, 0.25, "square", 0.1);
+        setTimeout(() => playTone(55, 0.25, "sawtooth", 0.08), 90);
+      }
+
+      if (type === "laser") {
+        playTone(980, 0.08, "sawtooth", 0.055);
+        setTimeout(() => playTone(1260, 0.08, "sawtooth", 0.045), 60);
+      }
+
+      if (type === "win") {
+        playTone(523, 0.15, "sine", 0.08);
+        setTimeout(() => playTone(659, 0.15, "sine", 0.08), 160);
+        setTimeout(() => playTone(784, 0.15, "sine", 0.08), 320);
+        setTimeout(() => playTone(1046, 0.35, "sine", 0.08), 480);
+      }
+
+      if (type === "tick") {
+        playTone(880, 0.04, "square", 0.04);
+      }
+
+      if (type === "tap") {
+        playTone(420, 0.035, "sine", 0.025);
+      }
+    }
+
+    document.body.addEventListener("click", () => {
+      if (!state.audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }, { once: true });
+
+    renderSetup();
+  </script>
+</body>
+</html>
